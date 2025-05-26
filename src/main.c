@@ -98,6 +98,8 @@ int main(int argc, const char** argv)
 
     file_info_t directory_information[EXTENSION_LAST+1];
     file_info_t total_directory_information;
+    file_info_t grand_total;
+    memset(&grand_total, 0, sizeof(file_info_t));
     for (size_t i = 0; i < parser.unparsed.size; i++)
     {
         memset(directory_information, 0, sizeof(directory_information));
@@ -122,6 +124,10 @@ int main(int argc, const char** argv)
             total_directory_information.empty_lines += info.empty_lines;
             total_directory_information.non_empty_lines += info.non_empty_lines;
             total_directory_information.file_count++;
+
+            grand_total.empty_lines += info.empty_lines;
+            grand_total.non_empty_lines += info.non_empty_lines;
+            grand_total.file_count++;
         }
         string_list_dispose(&files);
 
@@ -144,6 +150,12 @@ int main(int argc, const char** argv)
         if (info.file_count > 0)
             printf("\tmisc:\t%d files | lines: %ld code | %ld empty | (%ld total)\n", info.file_count, info.non_empty_lines, info.empty_lines, info.non_empty_lines + info.empty_lines);
         printf("\n");
+    }
+
+    if (parser.unparsed.size > 1)
+    {
+        printf("Info Summary\n============\n");
+        printf("\ttotal:\t%d files | lines: %ld code | %ld empty | (%ld total)\n\n", grand_total.file_count, grand_total.non_empty_lines, grand_total.empty_lines, grand_total.non_empty_lines + grand_total.empty_lines);
     }
 
     free(LINE_PTR);
