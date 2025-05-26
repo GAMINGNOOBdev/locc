@@ -25,10 +25,6 @@ size_t LINE_PTR_SIZE = 0;
 file_info_t get_file_info(const char* filename)
 {
     file_info_t fileinfo = {0,0,-1,NULL,1};
-    FILE* file = fopen(filename, "r");
-    if (file == NULL)
-        return fileinfo;
-
     fileinfo.extension = file_util_get_extension(filename);
     for (int i = 0; i < EXTENSION_LAST; i++)
     {
@@ -41,6 +37,10 @@ file_info_t get_file_info(const char* filename)
     }
 
     if (ignore_misc && fileinfo.extension_index == -1)
+        return fileinfo;
+
+    FILE* file = fopen(filename, "r");
+    if (file == NULL)
         return fileinfo;
 
     size_t linesize = 0;
@@ -145,24 +145,24 @@ int main(int argc, const char** argv)
         for (size_t i = 0; i < strlen(filePath); i++)
             printf("=");
         printf("\n");
-        printf("\ttotal:\t%d files | lines: %ld code | %ld empty | (%ld total)\n", total_directory_information.file_count, total_directory_information.non_empty_lines, total_directory_information.empty_lines, total_directory_information.non_empty_lines + total_directory_information.empty_lines);
+        printf("\ttotal:\t%ld files | lines: %ld code | %ld empty | (%ld total)\n", total_directory_information.file_count, total_directory_information.non_empty_lines, total_directory_information.empty_lines, total_directory_information.non_empty_lines + total_directory_information.empty_lines);
         for (int i = 0; i < EXTENSION_LAST; i++)
         {
             file_info_t info = directory_information[i];
             if (info.file_count == 0)
                 continue;
-            printf("\t'%s':\t%d files | lines: %ld code | %ld empty | (%ld total)\n", info.extension, info.file_count, info.non_empty_lines, info.empty_lines, info.non_empty_lines + info.empty_lines);
+            printf("\t'%s':\t%ld files | lines: %ld code | %ld empty | (%ld total)\n", info.extension, info.file_count, info.non_empty_lines, info.empty_lines, info.non_empty_lines + info.empty_lines);
         }
         file_info_t info = directory_information[EXTENSION_LAST];
         if (info.file_count > 0)
-            printf("\tmisc:\t%d files | lines: %ld code | %ld empty | (%ld total)\n", info.file_count, info.non_empty_lines, info.empty_lines, info.non_empty_lines + info.empty_lines);
+            printf("\tmisc:\t%ld files | lines: %ld code | %ld empty | (%ld total)\n", info.file_count, info.non_empty_lines, info.empty_lines, info.non_empty_lines + info.empty_lines);
         printf("\n");
     }
 
     if (parser.unparsed.size > 1)
     {
         printf("Info Summary\n============\n");
-        printf("\ttotal:\t%d files | lines: %ld code | %ld empty | (%ld total)\n\n", grand_total.file_count, grand_total.non_empty_lines, grand_total.empty_lines, grand_total.non_empty_lines + grand_total.empty_lines);
+        printf("\ttotal:\t%ld files | lines: %ld code | %ld empty | (%ld total)\n\n", grand_total.file_count, grand_total.non_empty_lines, grand_total.empty_lines, grand_total.non_empty_lines + grand_total.empty_lines);
     }
 
     free(LINE_PTR);

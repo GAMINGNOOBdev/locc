@@ -16,10 +16,10 @@ typedef unsigned char loglevel_t;
 #define LOGLEVEL_WARNING    (loglevel_t)3
 
 #define LOG logStr
-#define LOGINFO(msg) logStr(LOGLEVEL_INFO, msg)
-#define LOGDEBUG(msg) logStr(LOGLEVEL_DEBUG, msg)
-#define LOGERROR(msg) logStr(LOGLEVEL_ERROR, msg)
-#define LOGWARNING(msg) logStr(LOGLEVEL_WARNING, msg)
+#define LOGINFO(...) logStr(LOGLEVEL_INFO, stringf(__VA_ARGS__))
+#define LOGDEBUG(...) logStr(LOGLEVEL_DEBUG, stringf(__VA_ARGS__))
+#define LOGERROR(...) logStr(LOGLEVEL_ERROR, stringf(__VA_ARGS__))
+#define LOGWARNING(...) logStr(LOGLEVEL_WARNING, stringf(__VA_ARGS__))
 
 /**
  * @brief Like printf but for building a string together

@@ -16,29 +16,29 @@
 #define MAX_OF(a, b) a > b ? a : b
 
 const char* KNOWN_EXTENSIONS[] = {
+    ".asm",
     ".c",
+    ".cfg",
+    ".cmake",
     ".cpp",
     ".cs",
     ".css",
-    ".java",
-    ".js",
-    ".ts",
-    ".h",
-    ".hpp",
-    ".rs",
-    ".json",
-    ".asm",
-    ".s",
-    ".py",
-    ".yaml",
-    ".cfg",
     ".fs",
     ".glsl",
+    ".h",
     ".hlsl",
+    ".hpp",
     ".html",
-    ".cmake",
+    ".js",
+    ".json",
+    ".java",
     ".log",
+    ".py",
+    ".rs",
+    ".s",
+    ".ts",
     ".txt",
+    ".yaml",
     0
 };
 
@@ -95,6 +95,7 @@ void file_util_concat_path_vectors(string_list_t* output, string_list_t* input, 
         strcpy(combined, prefix);
         strcpy(&combined[strlen(prefix)], string);
         string_list_add(output, combined);
+        free(combined);
     }
 }
 
@@ -288,16 +289,10 @@ const char* file_util_get_file_name(const char* str)
 
 const char* file_util_get_extension(const char* str)
 {
-    int lastDot = -1;
-    for (size_t i = 0; i < strlen(str); i++)
-    {
-        if (str[i] == '.')
-            lastDot = i;
-    }
-
+    int lastDot = strlpos(str, '.');
     if (lastDot == -1)
         return str;
-    
+
     return (const char*)&str[lastDot];
 }
 

@@ -23,7 +23,7 @@ typedef struct
     int extension_index;
     const char* extension;
 
-    unsigned int file_count;
+    size_t file_count;
 } file_info_t;
 
 /**
