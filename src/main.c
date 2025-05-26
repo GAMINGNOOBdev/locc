@@ -15,9 +15,10 @@
 
 void print_help_message(void)
 {
-    printf("Usage:\n\tlocc [options] <project paths...>\nOptions:\n\t-h\tPrint this help message\n");
+    printf("Usage:\n\tlocc [options] <project paths...>\nOptions:\n\t-h\tPrint this help message\n\t-i/--ignore-misc\tIgnore miscellaneous files\n");
 }
 
+int ignore_misc = 0;
 char* LINE_PTR = NULL;
 size_t LINE_PTR_SIZE = 0;
 
@@ -38,6 +39,9 @@ file_info_t get_file_info(const char* filename)
             break;
         }
     }
+
+    if (ignore_misc && fileinfo.extension_index == -1)
+        return fileinfo;
 
     size_t linesize = 0;
     while ((linesize = getlineV2(&LINE_PTR, &LINE_PTR_SIZE, file)) != (size_t)EOF)
@@ -80,6 +84,7 @@ int main(int argc, const char** argv)
     argument_parser parser;
     argument_parser_init(&parser);
     argument_parser_add(&parser, Argument_Type_Flag, "-h", "--help");
+    argument_parser_add(&parser, Argument_Type_Flag, "-i", "--ignore-misc");
     argument_parser_parse(&parser, argc, argv);
 
     if (argument_parser_has(&parser, "-h"))
@@ -88,6 +93,8 @@ int main(int argc, const char** argv)
         argument_parser_dispose(&parser);
         return 0;
     }
+
+    ignore_misc = argument_parser_has(&parser, "-i");
 
     PRINT_VERSION;
     logEnableDebugMsgs(1);
@@ -113,7 +120,7 @@ int main(int argc, const char** argv)
         for (size_t fidx = 0; fidx < files.count; fidx++)
         {
             file_info_t info = get_file_info(stringf("%s/%s", filePath, files.strings[fidx]));
-            if (info.extension_index == -1)
+            if (info.extension_index == -1 && !ignore_misc)
                 info.extension_index = EXTENSION_LAST;
 
             directory_information[info.extension_index].extension = info.extension;
