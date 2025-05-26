@@ -12,7 +12,7 @@
 #define FilterMaskFilesAndFolders       0x04 // Only files and folders inside the given directory
 #define FilterMaskAllFilesAndFolders    0x05 // All files and folders including those in subdirectories
 
-#define EXTENSION_LAST  22
+#define EXTENSION_LAST  23
 extern const char* KNOWN_EXTENSIONS[];
 
 typedef struct
@@ -25,14 +25,6 @@ typedef struct
 
     unsigned int file_count;
 } file_info_t;
-
-/**
- * @brief Gets file information
- * 
- * @param filename 
- * @return file_info_t 
- */
-file_info_t file_util_get_file_info(const char* filename);
 
 /**
  * Calculates the filesize of a given file
@@ -78,6 +70,11 @@ const char* file_util_get_file_name(const char* filePath);
 const char* file_util_get_extension(const char* filePath);
 
 size_t getdelimV2(char **buffer, size_t *buffersz, FILE *stream, char delim);
-size_t getlineV2(char **buffer, size_t *buffersz, FILE *stream);
+
+#ifdef _WIN32
+#define getlineV2(buffer, buffersz, stream) getdelimV2(buffer, buffersz, stream, '\n')
+#else
+#define getlineV2 getline
+#endif
 
 #endif

@@ -38,63 +38,9 @@ const char* KNOWN_EXTENSIONS[] = {
     ".html",
     ".cmake",
     ".log",
+    ".txt",
     0
 };
-
-file_info_t file_util_get_file_info(const char* filename)
-{    
-    file_info_t fileinfo = {0,0,-1,NULL,1};
-    FILE* file = fopen(filename, "rb");
-    if (file == NULL)
-        return fileinfo;
-
-    fileinfo.extension = file_util_get_extension(filename);
-    for (int i = 0; i < EXTENSION_LAST; i++)
-    {
-        if (strcmp(fileinfo.extension, KNOWN_EXTENSIONS[i]) == 0)
-        {
-            fileinfo.extension_index = i;
-            break;
-        }
-    }
-
-    char* line = NULL;
-    size_t buffersize = 0;
-    size_t linesize = 0;
-    while ((linesize = getlineV2(&line, &buffersize, file)) != (size_t)EOF)
-    {
-        if (linesize == 0)
-        {
-            fileinfo.empty_lines++;
-            continue;
-        }
-        if (line[linesize-1] == '\n')
-        {
-            line[linesize-1] = 0;
-            linesize--;
-        }
-        if (linesize == 0)
-        {
-            fileinfo.empty_lines++;
-            continue;
-        }
-        if (line[linesize-1] == '\r')
-        {
-            line[linesize-1] = 0;
-            linesize--;
-        }
-
-        if (linesize == 0)
-            fileinfo.empty_lines++;
-        else
-            fileinfo.non_empty_lines++;
-    }
-    if (line)
-        free(line);
-
-    fclose(file);
-    return fileinfo;
-}
 
 size_t file_util_file_size(const char* filename)
 {
@@ -145,8 +91,10 @@ void file_util_concat_path_vectors(string_list_t* output, string_list_t* input, 
     for (size_t i = 0; i < input->count; i++)
     {
         const char* string = input->strings[i];
-        const char* formatted = stringf("%s%s", prefix, string);
-        string_list_add(output, formatted);
+        char* combined = malloc(strlen(prefix) + strlen(string) + 1);
+        strcpy(combined, prefix);
+        strcpy(&combined[strlen(prefix)], string);
+        string_list_add(output, combined);
     }
 }
 
@@ -357,7 +305,7 @@ size_t getdelimV2(char **buffer, size_t *buffersz, FILE *stream, char delim)
 {
     char *bufptr = NULL;
     char *p = bufptr;
-    size_t size;
+    int size;
     int c;
 
     if (buffer == NULL)
@@ -393,7 +341,8 @@ size_t getdelimV2(char **buffer, size_t *buffersz, FILE *stream, char delim)
                 return -1;
         }
 
-        *p++ = c;
+        *p = c;
+        p++;
         if (c == delim)
             break;
 
@@ -405,9 +354,4 @@ size_t getdelimV2(char **buffer, size_t *buffersz, FILE *stream, char delim)
     *buffersz = size;
 
     return p - bufptr - 1;
-}
-
-size_t getlineV2(char **buffer, size_t *buffersz, FILE *stream)
-{
-    return getdelimV2(buffer, buffersz, stream, '\n');
 }
