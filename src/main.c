@@ -11,11 +11,11 @@
 #   include <malloc.h>
 #endif
 
-#define PRINT_VERSION printf("LOCC version %d.%d.%d\n", __YEAR__, __MONTH__, __DAY__)
+#define PRINT_VERSION printf("LOCC version %d.%d.%d\n\n", __YEAR__, __MONTH__, __DAY__)
 
 void print_help_message(void)
 {
-    printf("Usage:\n\tlocc [options] <project paths...>\n\nOptions:\n\t-h\tPrint this help message\n");
+    printf("Usage:\n\tlocc [options] <project paths...>\nOptions:\n\t-h\tPrint this help message\n");
 }
 
 char* LINE_PTR = NULL;
