@@ -1,13 +1,19 @@
 #include <argument_parser.h>
-#include <string_util.h>
-#include <file_util.h>
 #include <string.h>
+#include <stdarg.h>
 #include <stdio.h>
 
 #ifdef __APPLE__
 #   include <stdlib.h>
 #else
 #   include <malloc.h>
+#endif
+
+#ifdef _WIN32
+#   include <windows.h>
+#   include <stdlib.h>
+#else
+#   include <dirent.h>
 #endif
 
 typedef struct
@@ -21,12 +27,130 @@ typedef struct
     size_t file_count;
 } file_info_t;
 
+typedef void(*file_iteration_callback_t)(const char* path);
+
 #define PRINT_VERSION printf("LOCC version %d.%d.%d\n\n", __YEAR__, __MONTH__, __DAY__)
 
 void print_help_message(void)
 {
     printf("Usage:\n\tlocc [options] <project paths...>\nOptions:\n\t-h\tPrint this help message\n\t-i/--ignore-misc\tIgnore miscellaneous files\n");
 }
+
+const char* stringf(const char* formatString, ...)
+{
+    static char mFormattingBuffer[4096];
+
+    va_list args;
+    va_start(args, formatString);
+    vsnprintf(mFormattingBuffer, 4096, formatString, args);
+    va_end(args);
+
+    return mFormattingBuffer;
+}
+
+int strlpos(const char* str, char c)
+{
+    char* s = (char*)str;
+    int idx = 0;
+    int resIdx = -1;
+    while (*s != 0)
+    {
+        if (*s == c)
+            resIdx = idx;
+
+        s++;
+        idx++;
+    }
+    return resIdx;
+}
+
+#ifdef _WIN32
+#define getlineV2(buffer, buffersz, stream) getdelimV2(buffer, buffersz, stream, '\n')
+size_t getdelimV2(char **buffer, size_t *buffersz, FILE *stream, char delim)
+{
+    char *bufptr = NULL;
+    char *p = bufptr;
+    int size;
+    int c;
+
+    if (buffer == NULL)
+        return -1;
+    if (stream == NULL)
+        return -1;
+    if (buffersz == NULL)
+        return -1;
+
+    bufptr = *buffer;
+    size = *buffersz;
+
+    c = fgetc(stream);
+    if (c == EOF)
+        return -1;
+
+    if (bufptr == NULL)
+    {
+        bufptr = malloc(128);
+        if (bufptr == NULL)
+            return -1;
+
+        size = 128;
+    }
+    p = bufptr;
+    while(c != EOF)
+    {
+        if ((p - bufptr) > (size - 1))
+        {
+            size = size + 128;
+            bufptr = realloc(bufptr, size);
+            if (bufptr == NULL)
+                return -1;
+        }
+
+        *p = c;
+        p++;
+        if (c == delim)
+            break;
+
+        c = fgetc(stream);
+    }
+
+    *p++ = '\0';
+    *buffer = bufptr;
+    *buffersz = size;
+
+    return p - bufptr - 1;
+}
+#else
+#define getlineV2 getline
+#endif
+
+#define EXTENSION_LAST  23
+const char* KNOWN_EXTENSIONS[] = {
+    ".asm",
+    ".c",
+    ".cfg",
+    ".cmake",
+    ".cpp",
+    ".cs",
+    ".css",
+    ".fs",
+    ".glsl",
+    ".h",
+    ".hlsl",
+    ".hpp",
+    ".html",
+    ".js",
+    ".json",
+    ".java",
+    ".log",
+    ".py",
+    ".rs",
+    ".s",
+    ".ts",
+    ".txt",
+    ".yaml",
+    0
+};
 
 int ignore_misc = 0;
 char* LINE_PTR = NULL;
@@ -36,6 +160,15 @@ file_info_t directory_information[EXTENSION_LAST+1];
 file_info_t total_directory_information;
 file_info_t grand_total;
 const char* current_path = NULL;
+
+const char* file_util_get_extension(const char* str)
+{
+    int lastDot = strlpos(str, '.');
+    if (lastDot == -1)
+        return str;
+
+    return (const char*)&str[lastDot];
+}
 
 file_info_t get_file_info(const char* filename)
 {
@@ -108,6 +241,70 @@ void file_iteration(const char* filename)
     grand_total.file_count++;
 }
 
+void file_util_iterate_directory_all_files(const char* tmppath, file_iteration_callback_t callback)
+{
+    if (!tmppath || !callback)
+        return;
+
+    char* path = malloc(strlen(tmppath)+1);
+    strcpy(path, tmppath);
+
+    if (path[strlen(path)-1] == '/' || path[strlen(path)-1] == '\\')
+        path[strlen(path)-1] = 0;
+
+#ifdef _WIN32
+    WIN32_FIND_DATAA fdFile;
+    HANDLE hFind = NULL;
+
+    if ((hFind = FindFirstFileA(stringf("%s\\*.*", path), &fdFile)) == INVALID_HANDLE_VALUE)
+    {
+        printf("ERROR: could not find folder '%s'", path);
+        free(path);
+        return;
+    }
+
+    do
+    {
+        if (fdFile.cFileName[0] == '.')
+            continue;
+        const char* filename = (const char*)fdFile.cFileName;
+
+        if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            file_util_iterate_directory_all_files(stringf("%s/%s", path, filename), callback);
+        else
+            callback(filename);
+    }
+    while (FindNextFileA(hFind, &fdFile));
+
+    FindClose(hFind);
+#else
+    DIR* directory = opendir(path);
+    if (directory == NULL)
+    {
+        printf("ERROR: could not find folder '%s'", path);
+        free(path);
+        return;
+    }
+
+    struct dirent* entry;
+    while ((entry = readdir(directory)) != NULL)
+    {
+        if (strcmp(entry->d_name, ".") == 0 ||
+            strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        if (entry->d_type == DT_DIR)
+            file_util_iterate_directory_all_files(stringf("%s/%s", path, entry->d_name), callback);
+        else
+            callback(entry->d_name);
+    }
+
+    closedir(directory);
+#endif
+
+    free(path);
+}
+
 int main(int argc, const char** argv)
 {
     if (argc < 2)
@@ -147,7 +344,7 @@ int main(int argc, const char** argv)
             ((char*)filePath)[strlen(filePath)-1] = 0;
 
         current_path = filePath;
-        file_util_iterate_directory(filePath, FilterMaskAllFiles, file_iteration);
+        file_util_iterate_directory_all_files(filePath, file_iteration);
 
         if (total_directory_information.file_count == 0)
             continue;
