@@ -99,10 +99,11 @@ void file_util_concat_path_vectors(string_list_t* output, string_list_t* input, 
     }
 }
 
-string_list_t file_util_get_directory_contents(const char* tmppath, int mask)
+void file_util_iterate_directory(const char* tmppath, int mask, file_iteration_callback_t callback)
 {
-    string_list_t result;
-    string_list_init(&result);
+    if (!tmppath || !callback)
+        return;
+
     char* path = malloc(strlen(tmppath)+1);
     strcpy(path, tmppath);
 
@@ -128,8 +129,149 @@ string_list_t file_util_get_directory_contents(const char* tmppath, int mask)
         if (mask == FilterMaskAllFilesAndFolders)
         {
             if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+                file_util_iterate_directory(stringf("%s/%s", path, filename), mask,  callback);
+
+            callback(filename);
+            continue;
+        }
+
+        if (mask == FilterMaskFilesAndFolders)
+        {
+            callback(filename);
+            continue;
+        }
+
+        if (mask == FilterMaskFiles && !(fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+        {
+            callback(filename);
+            continue;
+        }
+
+        if (mask == FilterMaskFolders && fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            callback(filename);
+            continue;
+        }
+
+        if (mask == FilterMaskAllFiles)
+        {
+            if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+                file_util_iterate_directory(stringf("%s/%s", path, filename), mask, callback);
+            else
+                callback(filename);
+        }
+
+        if (mask == FilterMaskAllFolders && fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            file_util_iterate_directory(stringf("%s/%s", path, filename), mask, callback);
+            callback(filename);
+        }
+    }
+    while (FindNextFileA(hFind, &fdFile));
+
+    FindClose(hFind);
+#else
+    DIR* directory = opendir(path);
+    if (directory == NULL)
+    {
+        LOGERROR(stringf("could not find folder '%s'", path));
+        free(path);
+        return;
+    }
+
+    struct dirent* entry;
+    while ((entry = readdir(directory)) != NULL)
+    {
+        if (strcmp(entry->d_name, ".") == 0 ||
+            strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        if (mask == FilterMaskAllFilesAndFolders)
+        {
+            if (entry->d_type == DT_DIR)
+                file_util_iterate_directory(stringf("%s/%s", path, entry->d_name), mask, callback);
+
+            callback(entry->d_name);
+            continue;
+        }
+
+        if (mask == FilterMaskFilesAndFolders)
+        {
+            callback(entry->d_name);
+            continue;
+        }
+
+        if (mask == FilterMaskFiles && entry->d_type != DT_DIR)
+        {
+            callback(entry->d_name);
+            continue;
+        }
+
+        if (mask == FilterMaskFolders && entry->d_type == DT_DIR)
+        {
+            callback(entry->d_name);
+            continue;
+        }
+
+        if (mask == FilterMaskAllFiles)
+        {
+            if (entry->d_type == DT_DIR)
+                file_util_iterate_directory(stringf("%s/%s", path, entry->d_name), mask, callback);
+            else
+                callback(entry->d_name);
+            
+            continue;
+        }
+
+        if (mask == FilterMaskAllFolders)
+        {
+            if (entry->d_type == DT_DIR)
             {
-                string_list_t subdir_result = file_util_get_directory_contents(&subdir_result, stringf("%s/%s", path, filename), mask);
+                file_util_iterate_directory(stringf("%s/%s", path, entry->d_name), mask, callback);
+                callback(entry->d_name);
+            }
+
+            continue;
+        }
+    }
+
+    closedir(directory);
+#endif
+
+    free(path);
+}
+
+string_list_t file_util_get_directory_contents(const char* tmppath, int mask)
+{
+    string_list_t result;
+    string_list_init(&result);
+    char* path = malloc(strlen(tmppath)+1);
+    strcpy(path, tmppath);
+
+    if (path[strlen(path)-1] == '/' || path[strlen(path)-1] == '\\')
+        path[strlen(path)-1] = 0;
+
+#ifdef _WIN32
+    WIN32_FIND_DATAA fdFile;
+    HANDLE hFind = NULL;
+
+    if ((hFind = FindFirstFileA(stringf("%s\\*.*", path), &fdFile)) == INVALID_HANDLE_VALUE)
+    {
+        free(path);
+        return result;
+    }
+
+    do
+    {
+        if (fdFile.cFileName[0] == '.')
+            continue;
+        const char* filename = (const char*)fdFile.cFileName;
+
+        if (mask == FilterMaskAllFilesAndFolders)
+        {
+            if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            {
+                string_list_t subdir_result = file_util_get_directory_contents(stringf("%s/%s", path, filename), mask);
                 if (subResult.count > 0)
                     file_util_concat_path_vectors(&result, &subdir_result, stringf("%s/", filename));
                 string_list_dispose(&subdir_result);
@@ -161,7 +303,7 @@ string_list_t file_util_get_directory_contents(const char* tmppath, int mask)
         {
             if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
-                string_list_t subdir_result = file_util_get_directory_contents(&subdir_result, stringf("%s/%s", path, filename), mask);
+                string_list_t subdir_result = file_util_get_directory_contents(stringf("%s/%s", path, filename), mask);
                 if (subResult.count > 0)
                     file_util_concat_path_vectors(&result, &subdir_result, stringf("%s/", filename));
                 string_list_dispose(&subdir_result);
@@ -172,7 +314,7 @@ string_list_t file_util_get_directory_contents(const char* tmppath, int mask)
 
         if (mask == FilterMaskAllFolders && fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
         {
-            string_list_t subdir_result = file_util_get_directory_contents(&subdir_result, stringf("%s/%s", path, filename), mask);
+            string_list_t subdir_result = file_util_get_directory_contents(stringf("%s/%s", path, filename), mask);
             if (subResult.count > 0)
                 file_util_concat_path_vectors(&result, &subdir_result, stringf("%s/", filename));
 
@@ -188,7 +330,6 @@ string_list_t file_util_get_directory_contents(const char* tmppath, int mask)
     if (directory == NULL)
     {
         LOGERROR(stringf("could not find folder '%s'", path));
-        string_list_dispose(&result);
         free(path);
         return result;
     }

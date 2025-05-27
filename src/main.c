@@ -11,6 +11,17 @@
 #   include <malloc.h>
 #endif
 
+typedef struct
+{
+    size_t empty_lines;
+    size_t non_empty_lines;
+
+    int extension_index;
+    const char* extension;
+
+    size_t file_count;
+} file_info_t;
+
 #define PRINT_VERSION printf("LOCC version %d.%d.%d\n\n", __YEAR__, __MONTH__, __DAY__)
 
 void print_help_message(void)
@@ -21,6 +32,11 @@ void print_help_message(void)
 int ignore_misc = 0;
 char* LINE_PTR = NULL;
 size_t LINE_PTR_SIZE = 0;
+
+file_info_t directory_information[EXTENSION_LAST+1];
+file_info_t total_directory_information;
+file_info_t grand_total;
+const char* current_path = NULL;
 
 file_info_t get_file_info(const char* filename)
 {
@@ -73,6 +89,26 @@ file_info_t get_file_info(const char* filename)
     return fileinfo;
 }
 
+void file_iteration(const char* filename)
+{
+    file_info_t info = get_file_info(stringf("%s/%s", current_path, filename));
+    if (info.extension_index == -1 && !ignore_misc)
+        info.extension_index = EXTENSION_LAST;
+
+    directory_information[info.extension_index].extension = info.extension;
+    directory_information[info.extension_index].empty_lines += info.empty_lines;
+    directory_information[info.extension_index].non_empty_lines += info.non_empty_lines;
+    directory_information[info.extension_index].file_count++;
+
+    total_directory_information.empty_lines += info.empty_lines;
+    total_directory_information.non_empty_lines += info.non_empty_lines;
+    total_directory_information.file_count++;
+
+    grand_total.empty_lines += info.empty_lines;
+    grand_total.non_empty_lines += info.non_empty_lines;
+    grand_total.file_count++;
+}
+
 int main(int argc, const char** argv)
 {
     if (argc < 2)
@@ -103,9 +139,6 @@ int main(int argc, const char** argv)
     LINE_PTR = malloc(0x1000);
     LINE_PTR_SIZE = 0x1000;
 
-    file_info_t directory_information[EXTENSION_LAST+1];
-    file_info_t total_directory_information;
-    file_info_t grand_total;
     memset(&grand_total, 0, sizeof(file_info_t));
     for (size_t i = 0; i < parser.unparsed.size; i++)
     {
@@ -116,27 +149,8 @@ int main(int argc, const char** argv)
         if (filePath[strlen(filePath)-1] == '/' || filePath[strlen(filePath)-1] == '\\')
             ((char*)filePath)[strlen(filePath)-1] = 0;
 
-        string_list_t files = file_util_get_directory_contents(filePath, FilterMaskAllFiles);
-        for (size_t fidx = 0; fidx < files.count; fidx++)
-        {
-            file_info_t info = get_file_info(stringf("%s/%s", filePath, files.strings[fidx]));
-            if (info.extension_index == -1 && !ignore_misc)
-                info.extension_index = EXTENSION_LAST;
-
-            directory_information[info.extension_index].extension = info.extension;
-            directory_information[info.extension_index].empty_lines += info.empty_lines;
-            directory_information[info.extension_index].non_empty_lines += info.non_empty_lines;
-            directory_information[info.extension_index].file_count++;
-
-            total_directory_information.empty_lines += info.empty_lines;
-            total_directory_information.non_empty_lines += info.non_empty_lines;
-            total_directory_information.file_count++;
-
-            grand_total.empty_lines += info.empty_lines;
-            grand_total.non_empty_lines += info.non_empty_lines;
-            grand_total.file_count++;
-        }
-        string_list_dispose(&files);
+        current_path = filePath;
+        file_util_iterate_directory(filePath, FilterMaskAllFiles, file_iteration);
 
         if (total_directory_information.file_count == 0)
             continue;

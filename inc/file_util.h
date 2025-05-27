@@ -15,16 +15,7 @@
 #define EXTENSION_LAST  23
 extern const char* KNOWN_EXTENSIONS[];
 
-typedef struct
-{
-    size_t empty_lines;
-    size_t non_empty_lines;
-
-    int extension_index;
-    const char* extension;
-
-    size_t file_count;
-} file_info_t;
+typedef void(*file_iteration_callback_t)(const char* path);
 
 /**
  * Calculates the filesize of a given file
@@ -45,8 +36,18 @@ size_t file_util_file_size(const char* filename);
 void* file_util_file_contents(const char* filename);
 
 /**
+ * Iterate over the contents of the given directory
+ * @note This function may take a while to complete since it will retrieve all files from subfolders as well if requested
+ * 
+ * @param path Path to the directory
+ * @param mask A filter which decides how a directories' contents shall be gotten
+ * @param callback Function which will be called on each iteration/entry
+*/
+void file_util_iterate_directory(const char* path, int mask, file_iteration_callback_t callback);
+
+/**
  * Gets the contents of the given directory
- * @note This function may take a while to complete since it will retrieve all files from subfolders as well
+ * @note This function may take a while to complete since it will retrieve all files from subfolders as well if requested
  * 
  * @param path Path to the directory
  * @param mask A filter which decides how a directories' contents shall be gotten
