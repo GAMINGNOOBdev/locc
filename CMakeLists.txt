@@ -37,7 +37,6 @@ set(sources
     src/argument_parser.c
     src/string_util.c
     src/file_util.c
-    src/logging.c
     src/main.c
     )
 

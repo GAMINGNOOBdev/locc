@@ -1,7 +1,6 @@
 #include <argument_parser.h>
 #include <string_util.h>
 #include <file_util.h>
-#include <logging.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -133,8 +132,6 @@ int main(int argc, const char** argv)
     ignore_misc = argument_parser_has(&parser, "-i");
 
     PRINT_VERSION;
-    logEnableDebugMsgs(1);
-    logEnableStdout(1);
 
     LINE_PTR = malloc(0x1000);
     LINE_PTR_SIZE = 0x1000;

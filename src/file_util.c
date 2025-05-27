@@ -1,6 +1,5 @@
 #include <string_util.h>
 #include <file_util.h>
-#include <logging.h>
 #include <memory.h>
 #include <string.h>
 #include <malloc.h>
@@ -116,6 +115,7 @@ void file_util_iterate_directory(const char* tmppath, int mask, file_iteration_c
 
     if ((hFind = FindFirstFileA(stringf("%s\\*.*", path), &fdFile)) == INVALID_HANDLE_VALUE)
     {
+        printf("ERROR: could not find folder '%s'", path);
         free(path);
         return;
     }
@@ -174,7 +174,7 @@ void file_util_iterate_directory(const char* tmppath, int mask, file_iteration_c
     DIR* directory = opendir(path);
     if (directory == NULL)
     {
-        LOGERROR(stringf("could not find folder '%s'", path));
+        printf("ERROR: could not find folder '%s'", path);
         free(path);
         return;
     }
@@ -257,6 +257,7 @@ string_list_t file_util_get_directory_contents(const char* tmppath, int mask)
 
     if ((hFind = FindFirstFileA(stringf("%s\\*.*", path), &fdFile)) == INVALID_HANDLE_VALUE)
     {
+        printf("ERROR: could not find folder '%s'", path);
         free(path);
         return result;
     }
@@ -329,7 +330,7 @@ string_list_t file_util_get_directory_contents(const char* tmppath, int mask)
     DIR* directory = opendir(path);
     if (directory == NULL)
     {
-        LOGERROR(stringf("could not find folder '%s'", path));
+        printf("ERROR: could not find folder '%s'", path);
         free(path);
         return result;
     }

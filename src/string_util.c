@@ -1,7 +1,9 @@
 #include <string_util.h>
-#include <logging.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
 
 void string_list_init(string_list_t* list)
 {
@@ -75,6 +77,18 @@ void string_list_dispose(string_list_t* list)
     list->strings = NULL;
 }
 
+const char* stringf(const char* formatString, ...)
+{
+    static char mFormattingBuffer[4096];
+
+    va_list args;
+    va_start(args, formatString);
+    vsnprintf(mFormattingBuffer, 4096, formatString, args);
+    va_end(args);
+
+    return mFormattingBuffer;
+}
+
 int strpos(const char* str, char c)
 {
     char* s = (char*)str;
@@ -103,16 +117,4 @@ int strlpos(const char* str, char c)
         idx++;
     }
     return resIdx;
-}
-
-uint64_t strtoi(const char* str)
-{
-    uint64_t res = 0;
-    size_t len = strlen(str);
-    for (size_t i = 0; i < len; i++)
-    {
-        res *= 10;
-        res += str[i] - '0';
-    }
-    return res;
 }
