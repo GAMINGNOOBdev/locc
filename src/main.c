@@ -20,10 +20,8 @@ typedef struct
 {
     size_t empty_lines;
     size_t non_empty_lines;
-
     int extension_index;
     const char* extension;
-
     size_t file_count;
 } file_info_t;
 
@@ -359,7 +357,7 @@ int main(int argc, const char** argv)
             file_info_t info = directory_information[i];
             if (info.file_count == 0)
                 continue;
-            printf("\t'%s':\t%ld files | lines: %ld code | %ld empty | (%ld total)\n", info.extension, info.file_count, info.non_empty_lines, info.empty_lines, info.non_empty_lines + info.empty_lines);
+            printf("\t%s:\t%ld files | lines: %ld code | %ld empty | (%ld total)\n", info.extension, info.file_count, info.non_empty_lines, info.empty_lines, info.non_empty_lines + info.empty_lines);
         }
         file_info_t info = directory_information[EXTENSION_LAST];
         if (info.file_count > 0)
@@ -370,7 +368,7 @@ int main(int argc, const char** argv)
     if (parser.unparsed.size > 1)
     {
         printf("Info Summary\n============\n");
-        printf("\ttotal:\t%ld files | lines: %ld code | %ld empty | (%ld total)\n\n", grand_total.file_count, grand_total.non_empty_lines, grand_total.empty_lines, grand_total.non_empty_lines + grand_total.empty_lines);
+        printf("\t%ld files\n\t%ld lines of code\n\t%ld empty lines\n\t(%ld total lines)\n\n", grand_total.file_count, grand_total.non_empty_lines, grand_total.empty_lines, grand_total.non_empty_lines + grand_total.empty_lines);
     }
 
     free(LINE_PTR);
