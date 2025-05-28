@@ -31,7 +31,7 @@ typedef void(*file_iteration_callback_t)(const char* path);
 
 void print_help_message(void)
 {
-    printf("Usage:\n\tlocc [options] <project paths...>\nOptions:\n\t-h\tPrint this help message\n\t-i/--ignore-misc\tIgnore miscellaneous files\n");
+    printf("Usage:\n\tlocc [options] <path1> <path2> ...\nOptions:\n\t-h\t\t\tPrint this help message\n\t-i/--ignore-misc\tIgnore miscellaneous files\n");
 }
 
 const char* stringf(const char* formatString, ...)
@@ -122,7 +122,7 @@ size_t getdelimV2(char **buffer, size_t *buffersz, FILE *stream, char delim)
 #define getlineV2 getline
 #endif
 
-#define EXTENSION_LAST  23
+#define EXTENSION_COUNT  24
 const char* KNOWN_EXTENSIONS[] = {
     ".asm",
     ".c",
@@ -141,20 +141,20 @@ const char* KNOWN_EXTENSIONS[] = {
     ".json",
     ".java",
     ".log",
+    ".md",
     ".py",
     ".rs",
     ".s",
     ".ts",
     ".txt",
-    ".yaml",
-    0
+    ".yaml"
 };
 
 int ignore_misc = 0;
 char* LINE_PTR = NULL;
 size_t LINE_PTR_SIZE = 0;
 
-file_info_t directory_information[EXTENSION_LAST+1];
+file_info_t directory_information[EXTENSION_COUNT+1];
 file_info_t total_directory_information;
 file_info_t grand_total;
 const char* current_path = NULL;
@@ -172,7 +172,7 @@ file_info_t get_file_info(const char* filename)
 {
     file_info_t fileinfo = {0,0,-1,NULL,1};
     fileinfo.extension = file_util_get_extension(filename);
-    for (int i = 0; i < EXTENSION_LAST; i++)
+    for (int i = 0; i < EXTENSION_COUNT; i++)
     {
         if (strcmp(fileinfo.extension, KNOWN_EXTENSIONS[i]) == 0)
         {
@@ -221,9 +221,12 @@ file_info_t get_file_info(const char* filename)
 
 void file_iteration(const char* filename)
 {
-    file_info_t info = get_file_info(stringf("%s/%s", current_path, filename));
+    const char* path = current_path;
+    if (filename != NULL)
+        path = stringf("%s/%s", current_path, filename);
+    file_info_t info = get_file_info(path);
     if (info.extension_index == -1 && !ignore_misc)
-        info.extension_index = EXTENSION_LAST;
+        info.extension_index = EXTENSION_COUNT;
 
     directory_information[info.extension_index].extension = info.extension;
     directory_information[info.extension_index].empty_lines += info.empty_lines;
@@ -250,13 +253,22 @@ void file_util_iterate_directory_all_files(const char* tmppath, file_iteration_c
     if (path[strlen(path)-1] == '/' || path[strlen(path)-1] == '\\')
         path[strlen(path)-1] = 0;
 
+    // check if possibly the given path is just a single file
+    FILE* file = fopen(path, "r+");
+    if (file != NULL)
+    {
+        fclose(file);
+        callback(NULL);
+        return;
+    }
+
 #ifdef _WIN32
     WIN32_FIND_DATAA fdFile;
     HANDLE hFind = NULL;
 
     if ((hFind = FindFirstFileA(stringf("%s\\*.*", path), &fdFile)) == INVALID_HANDLE_VALUE)
     {
-        printf("ERROR: could not find folder '%s'", path);
+        printf("ERROR: could not find folder '%s'\n", path);
         free(path);
         return;
     }
@@ -279,7 +291,7 @@ void file_util_iterate_directory_all_files(const char* tmppath, file_iteration_c
     DIR* directory = opendir(path);
     if (directory == NULL)
     {
-        printf("ERROR: could not find folder '%s'", path);
+        printf("ERROR: could not find folder '%s' \n", path);
         free(path);
         return;
     }
@@ -352,14 +364,14 @@ int main(int argc, const char** argv)
             printf("=");
         printf("\n");
         printf("\ttotal:\t%ld files | lines: %ld code | %ld empty | (%ld total)\n", total_directory_information.file_count, total_directory_information.non_empty_lines, total_directory_information.empty_lines, total_directory_information.non_empty_lines + total_directory_information.empty_lines);
-        for (int i = 0; i < EXTENSION_LAST; i++)
+        for (int i = 0; i < EXTENSION_COUNT; i++)
         {
             file_info_t info = directory_information[i];
             if (info.file_count == 0)
                 continue;
             printf("\t%s:\t%ld files | lines: %ld code | %ld empty | (%ld total)\n", info.extension, info.file_count, info.non_empty_lines, info.empty_lines, info.non_empty_lines + info.empty_lines);
         }
-        file_info_t info = directory_information[EXTENSION_LAST];
+        file_info_t info = directory_information[EXTENSION_COUNT];
         if (info.file_count > 0)
             printf("\tmisc:\t%ld files | lines: %ld code | %ld empty | (%ld total)\n", info.file_count, info.non_empty_lines, info.empty_lines, info.non_empty_lines + info.empty_lines);
         printf("\n");
