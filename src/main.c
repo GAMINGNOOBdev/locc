@@ -25,7 +25,7 @@ typedef struct
     size_t file_count;
 } file_info_t;
 
-typedef void(*file_iteration_callback_t)(const char* path);
+typedef void(*file_iteration_callback_t)(const char* path, const char* filename);
 
 #define PRINT_VERSION printf("LOCC version %d.%d.%d\n\n", __YEAR__, __MONTH__, __DAY__)
 
@@ -219,12 +219,12 @@ file_info_t get_file_info(const char* filename)
     return fileinfo;
 }
 
-void file_iteration(const char* filename)
+void file_iteration(const char* path, const char* filename)
 {
-    const char* path = current_path;
+    const char* finalpath = path;
     if (filename != NULL)
-        path = stringf("%s/%s", current_path, filename);
-    file_info_t info = get_file_info(path);
+        finalpath = stringf("%s/%s", path, filename);
+    file_info_t info = get_file_info(finalpath);
     if (info.extension_index == -1 && !ignore_misc)
         info.extension_index = EXTENSION_COUNT;
 
@@ -258,7 +258,7 @@ void file_util_iterate_directory_all_files(const char* tmppath, file_iteration_c
     if (file != NULL)
     {
         fclose(file);
-        callback(NULL);
+        callback(path, NULL);
         return;
     }
 
@@ -282,7 +282,7 @@ void file_util_iterate_directory_all_files(const char* tmppath, file_iteration_c
         if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             file_util_iterate_directory_all_files(stringf("%s/%s", path, filename), callback);
         else
-            callback(filename);
+            callback(path, filename);
     }
     while (FindNextFileA(hFind, &fdFile));
 
@@ -306,7 +306,7 @@ void file_util_iterate_directory_all_files(const char* tmppath, file_iteration_c
         if (entry->d_type == DT_DIR)
             file_util_iterate_directory_all_files(stringf("%s/%s", path, entry->d_name), callback);
         else
-            callback(entry->d_name);
+            callback(path, entry->d_name);
     }
 
     closedir(directory);
