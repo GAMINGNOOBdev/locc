@@ -80,7 +80,7 @@ jobs:
         merge-multiple: false
     - name: Get current date
       id: date
-      run: echo "::set-output name=date::$(date +'%Y.%m.%d')"
+      run: echo "date=$(date +'%Y.%m.%d') >> $GITHUB_OUTPUT"
     - name: Sign outputs
       uses: sigstore/gh-action-sigstore-python@v3.0.0
       with:
@@ -91,6 +91,15 @@ jobs:
                 "${{ github.workspace }}/locc/locc-macos-latest-Release/*"
                 "${{ github.workspace }}/locc/locc-windows-latest-Debug/*/*"
                 "${{ github.workspace }}/locc/locc-windows-latest-Release/*/*"
+    - name: Rename ubuntu to linux for convenience (release)
+      id: renamestuff1
+      run: mv "${{ github.workspace }}/locc/locc-ubuntu-latest-Release/" "${{ github.workspace }}/locc/locc-linux-latest-Release/"
+    - name: Rename ubuntu to linux for convenience (debug)
+      id: renamestuff2
+      run: mv "${{ github.workspace }}/locc/locc-ubuntu-latest-Debug/" "${{ github.workspace }}/locc/locc-linux-latest-Debug/"
+    - name: Remove latest from names because its annoying
+      id: removelatestfromnames
+      run: rename "latest-" "" *
     - name: Upload to a single artifact
       uses: actions/upload-artifact@v4
       with:

@@ -12,8 +12,10 @@
 #ifdef _WIN32
 #   include <windows.h>
 #   include <stdlib.h>
+#   define OS_DELIMITER '\\'
 #else
 #   include <dirent.h>
+#   define OS_DELIMITER '/'
 #endif
 
 typedef struct
@@ -63,8 +65,8 @@ int strlpos(const char* str, char c)
 }
 
 #ifdef _WIN32
-#define getlineV2(buffer, buffersz, stream) getdelimV2(buffer, buffersz, stream, '\n')
-size_t getdelimV2(char **buffer, size_t *buffersz, FILE *stream, char delim)
+#define getline(buffer, buffersz, stream) getdelim(buffer, buffersz, stream, '\n')
+size_t getdelim(char **buffer, size_t *buffersz, FILE *stream, char delim)
 {
     char *bufptr = NULL;
     char *p = bufptr;
@@ -118,8 +120,6 @@ size_t getdelimV2(char **buffer, size_t *buffersz, FILE *stream, char delim)
 
     return p - bufptr - 1;
 }
-#else
-#define getlineV2 getline
 #endif
 
 #define EXTENSION_COUNT  24
@@ -159,9 +159,9 @@ file_info_t total_directory_information;
 file_info_t grand_total;
 const char* current_path = NULL;
 
-const char* file_util_get_extension(const char* str)
+const char* file_util_get(const char* str, char delim)
 {
-    int lastDot = strlpos(str, '.');
+    int lastDot = strlpos(str, delim);
     if (lastDot == -1)
         return str;
 
@@ -171,7 +171,10 @@ const char* file_util_get_extension(const char* str)
 file_info_t get_file_info(const char* filename)
 {
     file_info_t fileinfo = {0,0,-1,NULL,1};
-    fileinfo.extension = file_util_get_extension(filename);
+    fileinfo.extension = file_util_get(filename, '.');
+    const char* name = file_util_get(filename, OS_DELIMITER)+1;
+    if (strcmp(name, "CMakeLists.txt") == 0)
+        fileinfo.extension = KNOWN_EXTENSIONS[3];
     for (int i = 0; i < EXTENSION_COUNT; i++)
     {
         if (strcmp(fileinfo.extension, KNOWN_EXTENSIONS[i]) == 0)
@@ -190,7 +193,7 @@ file_info_t get_file_info(const char* filename)
         return fileinfo;
 
     size_t linesize = 0;
-    while ((linesize = getlineV2(&LINE_PTR, &LINE_PTR_SIZE, file)) != (size_t)EOF)
+    while ((linesize = getline(&LINE_PTR, &LINE_PTR_SIZE, file)) != (size_t)EOF)
     {
         char* line = LINE_PTR;
         if (linesize == 0)
