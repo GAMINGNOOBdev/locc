@@ -99,7 +99,7 @@ jobs:
       run: mv "${{ github.workspace }}/locc/locc-ubuntu-latest-Debug/" "${{ github.workspace }}/locc/locc-linux-latest-Debug/"
     - name: Remove latest from names because its annoying
       id: removelatestfromnames
-      run: rename "latest-" "" *
+      run: for filename in $(ls ${{ github.workspace }}/locc/); do mv "${{ github.workspace }}/locc/$filename" "${{ github.workspace }}/locc/${filename//latest-/}"; done
     - name: Upload to a single artifact
       uses: actions/upload-artifact@v4
       with:
